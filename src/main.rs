@@ -1,7 +1,10 @@
 use clap::{Args, Parser};
+use flate2::read::GzDecoder;
+use std::fs;
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::process::Command;
-use std::{env, fs};
+use tar::Archive;
 
 const AZTEC_DIR: &str = "~/.aztec";
 const AZTEC_REPO: &str = "aztecprotocol/aztec-sandbox";
@@ -38,13 +41,13 @@ services:
 #[clap(version = "1.0", author = "Your Name")]
 #[command(author, version, about, long_about = None)]
 enum AztecVersionManagerCommand {
-    #[clap(about = "Install a specific Docker image version")]
+    #[clap(about = "Install a specific aztec-sandbox image version")]
     Install(Install),
 
-    #[clap(about = "Set a local version in ~/.aztec/version")]
+    #[clap(about = "Set the aztec-sandbox version to use")]
     Use(Use),
 
-    #[clap(about = "Run docker-compose from ~/.aztec/run")]
+    #[clap(about = "Run the sandbox")]
     Run,
 
     #[clap(about = "Update the aztec version manager")]
@@ -59,7 +62,6 @@ struct Install {
 
 #[derive(Args, Debug)]
 struct Use {
-    #[arg(short, long)]
     version: String,
 }
 
@@ -108,11 +110,10 @@ fn write_compose_text() {
 }
 
 fn run() {
-    // Assuming you're using docker-compose, if not, adjust this section accordingly
     let base =
         PathBuf::from(AZTEC_DIR.replace("~", &std::env::home_dir().unwrap().to_string_lossy()));
     let compose_path = &base.join("run");
-    // tODO:clean this shit up
+    // TODO:cleanup
     write_compose_text();
     let version_path = &base.join("version");
 
@@ -130,38 +131,102 @@ fn run() {
     // write the version to SANDBOX_VERSION
     std::env::set_var("SANDBOX_VERSION", version);
 
-    let output = std::process::Command::new("docker-compose")
+    let status = std::process::Command::new("docker-compose")
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
         .arg("-f")
         .arg(compose_path.to_string_lossy().to_string())
         .arg("up")
-        .output()
+        .status()
         .expect("Failed to execute docker-compose.");
 
-    println!("{}", String::from_utf8_lossy(&output.stdout));
-    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+    if !status.success() {
+        eprintln!("Command did not execute successfully.");
+    }
 }
 
 fn update() {
     println!("Updating to the latest version...");
     println!("Downloading latest version...");
-    let url = "https://api.github.com/repos/AztecProtocol/sandbox-version-manager/releases/latest";
-    let response = reqwest::blocking::get(url).expect("Failed to get latest version.");
-    let content = response.bytes().expect("Could not process bytes").to_vec();
-
-    // 2. Save to a temporary location
-    let temp_path = env::temp_dir().join("downloaded_binary");
-    fs::write(&temp_path, content).expect("Unable to write temp binary");
-
-    // 3. Replace the old binary
-    let home_dir = env::var("HOME").expect("HOME environment variable is not set");
-    let binary_path = PathBuf::from(home_dir).join(".aztec/bin/aztec-sandbox");
-
-    // Ensure the directory exists before replacing
-    if let Some(parent_dir) = binary_path.parent() {
-        fs::create_dir_all(parent_dir).expect("Could not create directory");
+    let url_result = get_tar_url();
+    if url_result.is_err() {
+        eprintln!("Could not get latest version.");
+        return;
     }
+    let url = url_result.unwrap();
 
-    fs::rename(temp_path, binary_path).expect("Could not replace binary");
+    println!("Downloading from: {}", &url);
+
+    // Get the arch
+    let response = reqwest::blocking::get(&url).expect("Failed to get latest version.");
+    let content = response.bytes().expect("Could not process bytes");
+
+    let reader = Cursor::new(content);
+
+    let tar = GzDecoder::new(reader);
+    let mut archive = Archive::new(tar);
+
+    let aztec_dir =
+        PathBuf::from(AZTEC_DIR.replace("~", &std::env::home_dir().unwrap().to_string_lossy()));
+    archive
+        .unpack(&aztec_dir.join("bin"))
+        .expect("Could not unpack archive");
+
+    let binary_path = PathBuf::from(&aztec_dir).join("bin/aztec-sandbox");
+    let _ = Command::new("chmod").arg("+x").arg(&binary_path).status();
 
     println!("Installation complete.");
+}
+
+fn get_tar_url() -> Result<String, String> {
+    let architecture = Command::new("uname")
+        .arg("-m")
+        .output()
+        .expect("Failed to execute command")
+        .stdout;
+
+    // Convert stdout bytes to String and trim newline
+    let mut arch_string = String::from_utf8(architecture)
+        .expect("Not UTF8")
+        .trim()
+        .to_string();
+
+    let plat = Command::new("uname")
+        .arg("-s")
+        .output()
+        .expect("Failed to execute command")
+        .stdout;
+
+    let plat_s = String::from_utf8(plat)
+        .expect("Not UTF8")
+        .trim()
+        .to_string();
+
+    let plat_string = match plat_s.as_str() {
+        "Darwin" => "apple-darwin",
+        "Linux" => "unknown-linux-gnu",
+        _ => {
+            eprintln!("unsupported platform: {}", plat_s);
+            return Err("unsupported platform".into());
+        }
+    };
+
+    match arch_string.as_str() {
+        "arm64" => arch_string = "aarch64".to_string(),
+        "x86_64" | "aarch64" => {}
+        _ => {
+            eprintln!("unsupported architecture: {}-{}", arch_string, "PLATFORM");
+            return Err("unsupported arch".into());
+        }
+    }
+
+    let repo = "AztecProtocol/sandbox-version-manager";
+    let tag = "nightly";
+    let release_url = format!("https://github.com/{}/releases/download/{}", repo, tag);
+    let bin_tarball_url = format!(
+        "{}/aztec-sandbox-{}-{}.tar.gz",
+        release_url, arch_string, plat_string
+    );
+
+    return Ok(bin_tarball_url);
 }

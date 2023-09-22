@@ -3,12 +3,11 @@ name = "aztec-sandbox" # Aztec Version Manager
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 clap = { version = "4.3.23", features = ["derive"] }
 reqwest = { version = "0.11.16", default-features = false, features = [
     "rustls-tls",
     "blocking",
 ] }
-
+tar = "0.4"
+flate2 = "1.0"
