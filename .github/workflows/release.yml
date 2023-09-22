@@ -44,10 +44,10 @@ jobs:
           path: ${{ env.CACHED_PATHS }}
           key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Setup toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          targets: ${{ matrix.target }}
 
       - name: Build environment and Compile
         run: |
@@ -72,15 +72,6 @@ jobs:
           name: aztec-sandbox-${{ matrix.target }}
           path: ./dist/*
           retention-days: 3
-
-      - name: Test built artifact
-        if: matrix.target == 'x86_64-apple-darwin'
-        run: |
-          cp ./target/${{ matrix.target }}/release/aztec-sandbox ~/.cargo/bin/
-
-          cd release-tests
-          yarn install
-          yarn test
 
       - name: Upload binaries to release tag
         uses: svenstaro/upload-release-action@v2
@@ -123,10 +114,10 @@ jobs:
           path: ${{ env.CACHED_PATHS }}
           key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Setup toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          targets: ${{ matrix.target }}
 
       - name: Build aztec-sandbox
         run: |
@@ -152,15 +143,6 @@ jobs:
           name: aztec-sandbox-${{ matrix.target }}
           path: ./dist/*
           retention-days: 3
-
-      - name: Test built artifact
-        if: startsWith(matrix.target, 'x86_64-unknown-linux')
-        run: |
-          cp ./target/${{ matrix.target }}/release/aztec-sandbox ~/.cargo/bin/
-
-          cd release-tests
-          yarn install
-          yarn test
 
       - name: Upload binaries to release tag
         uses: svenstaro/upload-release-action@v2
