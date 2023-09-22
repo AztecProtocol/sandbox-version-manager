@@ -44,10 +44,10 @@ jobs:
           path: ${{ env.CACHED_PATHS }}
           key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Setup toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          targets: ${{ matrix.target }}
 
       - name: Build environment and Compile
         run: |
@@ -123,10 +123,10 @@ jobs:
           path: ${{ env.CACHED_PATHS }}
           key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Setup toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          targets: ${{ matrix.target }}
 
       - name: Build aztec-sandbox
         run: |
