@@ -1,4 +1,5 @@
 use clap::{Args, Parser};
+use std::error::Error;
 use std::path::PathBuf;
 use std::process::Command;
 use std::{env, fs};
@@ -144,8 +145,17 @@ fn run() {
 fn update() {
     println!("Updating to the latest version...");
     println!("Downloading latest version...");
-    let url = "https://api.github.com/repos/AztecProtocol/sandbox-version-manager/releases/latest";
-    let response = reqwest::blocking::get(url).expect("Failed to get latest version.");
+    let url_result = get_tar_url();
+    if url_result.is_err() {
+        eprintln!("Could not get latest version.");
+        return;
+    }
+    let url = url_result.unwrap();
+
+    println!("Downloading from: {}", &url);
+
+    // Get the arch
+    let response = reqwest::blocking::get(&url).expect("Failed to get latest version.");
     let content = response.bytes().expect("Could not process bytes").to_vec();
 
     // 2. Save to a temporary location
@@ -164,4 +174,57 @@ fn update() {
     fs::rename(temp_path, binary_path).expect("Could not replace binary");
 
     println!("Installation complete.");
+}
+
+fn get_tar_url() -> Result<String, String> {
+    let architecture = Command::new("uname")
+        .arg("-m")
+        .output()
+        .expect("Failed to execute command")
+        .stdout;
+
+    // Convert stdout bytes to String and trim newline
+    let mut arch_string = String::from_utf8(architecture)
+        .expect("Not UTF8")
+        .trim()
+        .to_string();
+
+    let plat = Command::new("uname")
+        .arg("-s")
+        .output()
+        .expect("Failed to execute command")
+        .stdout;
+
+    let plat_s = String::from_utf8(plat)
+        .expect("Not UTF8")
+        .trim()
+        .to_string();
+
+    let plat_string = match plat_s.as_str() {
+        "Darwin" => "apple-darwin",
+        "Linux" => "unknown-linux-gnu",
+        _ => {
+            eprintln!("unsupported platform: {}", plat_s);
+            return Err("unsupported platform".into());
+        }
+    };
+
+    match arch_string.as_str() {
+        "arm64" => arch_string = "aarch64".to_string(),
+        "x86_64" | "aarch64" => {}
+        _ => {
+            eprintln!("unsupported architecture: {}-{}", arch_string, "PLATFORM");
+            return Err("unsupported arch".into());
+        }
+    }
+
+    let repo = "AztecProtocol/sandbox-version-manager";
+    let tag = "latest";
+    let release_url = format!("https://github.com/{}/releases/download/{}", repo, tag);
+    let bin_tarball_url = format!(
+        "{}/nargo-{}-{}.tar.gz",
+        release_url, arch_string, plat_string
+    );
+
+    return Ok(bin_tarball_url);
 }
