@@ -41,7 +41,7 @@ services:
 "#;
 
 #[derive(Parser, Debug)]
-#[clap(version = "1.0", author = "Your Name")]
+#[clap(version = "1.0", author = "Aztec Labs")]
 #[command(author, version, about, long_about = None)]
 enum AztecVersionManagerCommand {
     #[clap(about = "Install a specific aztec-sandbox image version")]
@@ -53,7 +53,7 @@ enum AztecVersionManagerCommand {
     #[clap(about = "Run the sandbox")]
     Run,
 
-    #[clap(about = "Update the aztec version manager")]
+    #[clap(about = "Update the aztec sandbox version manager")]
     Update,
 }
 
