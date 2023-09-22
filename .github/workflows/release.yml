@@ -44,14 +44,14 @@ jobs:
           path: ${{ env.CACHED_PATHS }}
           key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Setup toolchain
-        uses: dtolnay/rust-toolchain@1.66.0
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          targets: ${{ matrix.target }}
+          toolchain: stable
 
       - name: Build environment and Compile
         run: |
-          cargo build --release --target ${{ matrix.target }}"
+          cargo build --release --target ${{ matrix.target }}
 
       - uses: actions/cache/save@v3
         # Don't create cache entries for the merge queue.
@@ -85,7 +85,7 @@ jobs:
       - name: Upload binaries to release tag
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_name: noir-lang/noir
+          repo_name: AztecProtocol/sandbox-version-manager
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./aztec-sandbox-${{ matrix.target }}.tar.gz
           asset_name: aztec-sandbox-${{ matrix.target }}.tar.gz
@@ -123,15 +123,15 @@ jobs:
           path: ${{ env.CACHED_PATHS }}
           key: ${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Setup toolchain
-        uses: dtolnay/rust-toolchain@1.66.0
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          targets: ${{ matrix.target }}
+          toolchain: stable
 
       - name: Build aztec-sandbox
         run: |
           cargo install cross --version 0.2.5 --force 
-          cross build --release --target=${{ matrix.target }}"
+          cross build --release --target=${{ matrix.target }}
 
       - uses: actions/cache/save@v3
         # Don't create cache entries for the merge queue.
