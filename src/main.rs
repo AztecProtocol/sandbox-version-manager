@@ -1,3 +1,6 @@
+/// TODO:
+/// - check docker is available
+/// - check if docker is running
 use clap::{Args, Parser};
 use flate2::read::GzDecoder;
 use std::fs;
@@ -56,7 +59,6 @@ enum AztecVersionManagerCommand {
 
 #[derive(Args, Debug)]
 struct Install {
-    #[arg(short, long)]
     tag: String,
 }
 
