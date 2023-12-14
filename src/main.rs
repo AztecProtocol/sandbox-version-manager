@@ -95,25 +95,22 @@ fn install(tag: &str) {
 
 fn use_version(version: &str) {
     // TODO: deprecated home dir command -> look in noir
-    let path =
-        PathBuf::from(AZTEC_DIR.replace("~", &std::env::home_dir().unwrap().to_string_lossy()))
-            .join("version");
+    let path = PathBuf::from(AZTEC_DIR.replace('~', &dirs::home_dir().unwrap().to_string_lossy()))
+        .join("version");
     fs::write(path, version).expect("Failed to write to version file.");
     println!("Set version to: {}", version);
 }
 
 fn write_compose_text() {
-    let path =
-        PathBuf::from(AZTEC_DIR.replace("~", &std::env::home_dir().unwrap().to_string_lossy()))
-            .join("run");
+    let path = PathBuf::from(AZTEC_DIR.replace('~', &dirs::home_dir().unwrap().to_string_lossy()))
+        .join("run");
     if !path.exists() {
         fs::write(path, COMPOSE_TEXT).expect("Failed to write to compose file.");
     }
 }
 
 fn run() {
-    let base =
-        PathBuf::from(AZTEC_DIR.replace("~", &std::env::home_dir().unwrap().to_string_lossy()));
+    let base = PathBuf::from(AZTEC_DIR.replace('~', &dirs::home_dir().unwrap().to_string_lossy()));
     let compose_path = &base.join("run");
     // TODO:cleanup
     write_compose_text();
@@ -169,7 +166,7 @@ fn update() {
     let mut archive = Archive::new(tar);
 
     let aztec_dir =
-        PathBuf::from(AZTEC_DIR.replace("~", &std::env::home_dir().unwrap().to_string_lossy()));
+        PathBuf::from(AZTEC_DIR.replace('~', &dirs::home_dir().unwrap().to_string_lossy()));
     archive
         .unpack(&aztec_dir.join("bin"))
         .expect("Could not unpack archive");
@@ -217,7 +214,7 @@ fn get_tar_url() -> Result<String, String> {
         "arm64" => arch_string = "aarch64".to_string(),
         "x86_64" | "aarch64" => {}
         _ => {
-            eprintln!("unsupported architecture: {}-{}", arch_string, "PLATFORM");
+            eprintln!("unsupported architecture: {}-PLATFORM", arch_string);
             return Err("unsupported arch".into());
         }
     }
@@ -230,5 +227,5 @@ fn get_tar_url() -> Result<String, String> {
         release_url, arch_string, plat_string
     );
 
-    return Ok(bin_tarball_url);
+    Ok(bin_tarball_url)
 }
